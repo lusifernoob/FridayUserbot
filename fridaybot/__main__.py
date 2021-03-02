@@ -1,4 +1,4 @@
-#    Copyright (C) Midhun KM 2020-2021
+#    Copyright (C) @DevsExpo 2020-2021
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
@@ -12,6 +12,9 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import logging
+import pytz
+import asyncio
+from datetime import datetime
 from pathlib import Path
 from sys import argv
 import os
@@ -23,14 +26,23 @@ import platform
 from fridaybot import bot, client2, client3, friday_version
 from fridaybot.Configs import Config
 from telethon.tl.types import InputMessagesFilterDocument
-from fridaybot.utils import load_module, start_assistant, load_module_dclient
+from fridaybot.tr_engines.engine import tr_engine
+from fridaybot.utils import load_module, start_assistant, load_module_dclient, edit_or_reply
 from fridaybot.Configs import Config
+from fridaybot.function import runcmd, convert_to_image
+from fridaybot.function.FastTelethon import upload_file
 
 fridaydevs = logging.getLogger("Friday")
+
 
 async def add_bot(bot_token):
     await bot.start(bot_token)
     bot.me = await bot.get_me()
+    bot.tr_engine = tr_engine
+    bot.upload_to_server = upload_file
+    bot.cig = convert_to_image
+    bot.edit_or_reply = edit_or_reply
+    bot.run_cmd = runcmd
     bot.uid = telethon.utils.get_peer_id(bot.me)
    
         
@@ -45,6 +57,11 @@ Lol = "folyl's Token"
 
 async def lol_s(client):
     client.me = await client.get_me()
+    client.upload_to_server = upload_file
+    client.tr_engine = tr_engine
+    client.cig = convert_to_image
+    client.run_cmd = runcmd
+    client.edit_or_reply = edit_or_reply
     client.uid = telethon.utils.get_peer_id(client.me)
     
 def multiple_client():
@@ -144,9 +161,9 @@ if Config.ENABLE_ASSISTANTBOT == "ENABLE":
             path1 = Path(f.name)
             shortname = path1.stem
             start_assistant(shortname.replace(".py", ""))
-    wsta = "Friday And Assistant Bot Have Been Installed Successfully !"
+    wsta = "Friday And Assistant Bot Have Been Installed / Restarted Successfully !"
 else:
-    wsta = "Friday Has Been Installed Sucessfully"
+    wsta = "Friday Has Been Installed / Restarted Sucessfully"
 
 total_clients = 1
 if failed2 is None:
@@ -156,8 +173,11 @@ if failed3 is None:
     
 if wsta[0].lower() != Lol[0]:
    sys.exit("Bug Detected ! // UserBot is Exiting.")
-    
-fridaydevs.info(f"""{wsta}
+
+TZ = pytz.timezone(Config.TZ)
+datetime_tz = datetime.now(TZ)
+strk = datetime_tz.strftime(f"Date : %d/%m/%Y \nTime : %H:%M")
+sarg = (f"""{wsta}
 -------------------------------------------
 Friday-Userbot Based On Telethon V{tv}
 Python Version : {platform.python_version()}
@@ -165,8 +185,19 @@ Friday-Userbot Version : V{friday_version}
 Support Chat : @FridayChat
 Updates Channel : @FridaySupportOfficial
 Total Clients : {total_clients}
+{strk}
 -------------------------------------------""")
-        
+fridaydevs.info(sarg)
+
+#async def restart_log(bot):
+#    try:
+#        await bot.send_message(Config.PRIVATE_GROUP_ID, sarg)
+#    except:
+#        logger.warning("Invalid LOG Group ID! Please Check Your Log Group Id. For Now Friday is Exiting, Bye!")
+#        exit(1)
+#    return    
+
+#bot.loop.run_until_complete(restart_log(bot))
 bot.tgbot.loop.run_until_complete(check_inline_on_warner(bot.tgbot))
 
 if len(argv) not in (1, 3, 4):

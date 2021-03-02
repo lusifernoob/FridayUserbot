@@ -1,7 +1,18 @@
+#    Copyright (C) @DevsExpo 2020-2021
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 from telethon import functions
 from fridaybot.utils import friday_on_cmd
-"""Invite the user(s) to the current chat
-Syntax: .invite <User(s)>"""
 from telethon import functions
 from fridaybot import CMD_HELP
 from telethon.tl.types import Channel, Chat, User
@@ -31,9 +42,9 @@ from fridaybot.utils import edit_or_reply, friday_on_cmd, sudo_cmd
 loggy_grp = Config.PRIVATE_GROUP_ID
 from fridaybot import CMD_HELP
 
-global USER_AFK  # pylint:disable=E0602
-global afk_time  # pylint:disable=E0602
-global last_afk_message  # pylint:disable=E0602
+global USER_AFK
+global afk_time
+global last_afk_message
 global afk_start
 global afk_end
 USER_AFK = {}
@@ -46,47 +57,45 @@ afk_start = {}
 async def _(event):
     if event.fwd_from:
         return
-    to_add_users = event.pattern_match.group(1)
+    id_f = event.pattern_match.group(1)
+    kk = await friday.edit_or_reply(event, "`Processing...`")
     if event.is_private:
-        await edit_or_reply(
-            event, "`.invite` users to a chat, not to a Private Message"
-        )
-    else:
-        logger.info(to_add_users)
-        if not event.is_channel and event.is_group:
-            # https://lonamiwebs.github.io/Telethon/methods/messages/add_chat_user.html
-            for user_id in to_add_users.split(" "):
-                try:
-                    await borg(
+        await kk.edit("`This Plugin Only Works In Groups!`")
+        return
+    user_id = int(id_f) if id_f.isdigit() else str(id_f)
+    if event.is_group:
+        try:
+            await kk.edit(f"`Trying To Add {user_id} !`")
+            await event.client(
                         functions.messages.AddChatUserRequest(
-                            chat_id=event.chat_id, user_id=user_id, fwd_limit=1000000
+                            chat_id=event.chat_id, user_id=user_id, fwd_limit=0
                         )
                     )
-                except Exception as e:
-                    await event.reply(str(e))
-            await edit_or_reply(event, "Invited Successfully")
-        else:
-            # https://lonamiwebs.github.io/Telethon/methods/channels/invite_to_channel.html
-            for user_id in to_add_users.split(" "):
-                try:
-                    await borg(
+        except Exception as e:
+            await kk.edit(f"`Failed To Add : {user_id} ! \nReason : {e}`")
+            return
+    else:
+        try:
+            await kk.edit(f"`Trying To Add {user_id} !`")
+            await event.client(
                         functions.channels.InviteToChannelRequest(
                             channel=event.chat_id, users=[user_id]
                         )
                     )
-                except Exception as e:
-                    await event.reply(str(e))
-                await edit_or_reply(event, "Invited Successfully")
-
+        except Exception as e:
+            await kk.edit(f"`Failed To Add : {user_id} ! \nReason : {e}`")
+            return
+        
+afk_cmd = str(Config.COMMAND_HAND_LER) + "afk ?(.*)"
 @friday.on(
-    events.NewMessage(pattern=r"\.afk ?(.*)", outgoing=True)
-)  # pylint:disable=E0602
+    events.NewMessage(pattern=afk_cmd, outgoing=True)
+)
 async def _(event):
     if event.fwd_from:
         return
-    global USER_AFK  # pylint:disable=E0602
-    global afk_time  # pylint:disable=E0602
-    global last_afk_message  # pylint:disable=E0602
+    global USER_AFK
+    global afk_time
+    global last_afk_message
     global afk_start
     global afk_end
     global reason
@@ -97,13 +106,13 @@ async def _(event):
     start_1 = datetime.now()
     afk_start = start_1.replace(microsecond=0)
     reason = event.pattern_match.group(1)
-    if not USER_AFK:  # pylint:disable=E0602
-        last_seen_status = await borg(  # pylint:disable=E0602
+    if not USER_AFK:
+        last_seen_status = await event.client(
             functions.account.GetPrivacyRequest(types.InputPrivacyKeyStatusTimestamp())
         )
         if isinstance(last_seen_status.rules, types.PrivacyValueAllowAll):
-            afk_time = datetime.datetime.now()  # pylint:disable=E0602
-        USER_AFK = f"yes: {reason}"  # pylint:disable=E0602
+            afk_time = datetime.datetime.now()
+        USER_AFK = f"yes: {reason}"
         if reason:
             await borg.send_message(
                 event.chat_id,
@@ -114,19 +123,18 @@ async def _(event):
         await asyncio.sleep(5)
         await event.delete()
         try:
-            await borg.send_message(  # pylint:disable=E0602
-                Config.PRIVATE_GROUP_ID,  # pylint:disable=E0602
+            await borg.send_message(
+                Config.PRIVATE_GROUP_ID,
                 f"#AfkLogger Afk Is Active And Reason is {reason}",
             )
-        except Exception as e:  # pylint:disable=C0103,W0703
-            logger.warn(str(e))  # pylint:disable=E0602
+        except Exception as e:
+            logger.warn(str(e))
 
-
-@friday.on(events.NewMessage(outgoing=True))  # pylint:disable=E0602
+@friday.on(events.NewMessage(outgoing=True))
 async def set_not_afk(event):
-    global USER_AFK  # pylint:disable=E0602
-    global afk_time  # pylint:disable=E0602
-    global last_afk_message  # pylint:disable=E0602
+    global USER_AFK  
+    global afk_time  
+    global last_afk_message  
     global afk_start
     global afk_end
     back_alive = datetime.now()
@@ -134,7 +142,7 @@ async def set_not_afk(event):
     if afk_start != {}:
         total_afk_time = str((afk_end - afk_start))
     current_message = event.message.message
-    if ".afk" not in current_message and "yes" in USER_AFK:  # pylint:disable=E0602
+    if ".afk" not in current_message and "yes" in USER_AFK:  
         shite = await borg.send_message(
             event.chat_id,
             "__Pro is Back Alive__\n**No Longer afk.**\n `I Was afk for:``"
@@ -142,12 +150,12 @@ async def set_not_afk(event):
             + "`",
         )
         try:
-            await borg.send_message(  # pylint:disable=E0602
-                Config.PRIVATE_GROUP_ID,  # pylint:disable=E0602
+            await borg.send_message(  
+                Config.PRIVATE_GROUP_ID,  
                 "#AfkLogger User is Back Alive ! No Longer Afk ",
             )
         except Exception as e:  # pylint:disable=C0103,W0703
-            await borg.send_message(  # pylint:disable=E0602
+            await borg.send_message(  
                 event.chat_id,
                 "Please set `PRIVATE_GROUP_ID` "
                 + "for the proper functioning of afk functionality "
@@ -157,21 +165,21 @@ async def set_not_afk(event):
             )
         await asyncio.sleep(10)
         await shite.delete()
-        USER_AFK = {}  # pylint:disable=E0602
-        afk_time = None  # pylint:disable=E0602
+        USER_AFK = {}  
+        afk_time = None  
 
 
 @friday.on(
-    events.NewMessage(  # pylint:disable=E0602
+    events.NewMessage(  
         incoming=True, func=lambda e: bool(e.mentioned or e.is_private)
     )
 )
 async def on_afk(event):
     if event.fwd_from:
         return
-    global USER_AFK  # pylint:disable=E0602
-    global afk_time  # pylint:disable=E0602
-    global last_afk_message  # pylint:disable=E0602
+    global USER_AFK  
+    global afk_time  
+    global last_afk_message  
     global afk_start
     global afk_end
     back_alivee = datetime.now()
@@ -181,13 +189,11 @@ async def on_afk(event):
     afk_since = "**a while ago**"
     current_message_text = event.message.message.lower()
     if "afk" in current_message_text:
-        # fridaybot's should not reply to other fridaybot's
-        # https://core.telegram.org/bots/faq#why-doesn-39t-my-bot-see-messages-from-other-bots
         return False
-    if USER_AFK and not (await event.get_sender()).bot:  # pylint:disable=E0602
-        if afk_time:  # pylint:disable=E0602
+    if USER_AFK and not (await event.get_sender()).bot:  
+        if afk_time:  
             now = datetime.datetime.now()
-            datime_since_afk = now - afk_time  # pylint:disable=E0602
+            datime_since_afk = now - afk_time  
             time = float(datime_since_afk.seconds)
             days = time // (24 * 3600)
             time = time % (24 * 3600)
@@ -219,9 +225,9 @@ async def on_afk(event):
         await asyncio.sleep(10)
         # Spechide Bad
         await msg.delete()
-        if event.chat_id in last_afk_message:  # pylint:disable=E0602
-            await last_afk_message[event.chat_id].delete()  # pylint:disable=E0602
-        last_afk_message[event.chat_id] = msg  # pylint:disable=E0602
+        if event.chat_id in last_afk_message:  
+            await last_afk_message[event.chat_id].delete()  
+        last_afk_message[event.chat_id] = msg  
 
 
 CMD_HELP.update(
@@ -238,19 +244,6 @@ CMD_HELP.update(
     }
 )
 
-#    Copyright (C) Midhun KM 2020-2021
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 @friday.on(friday_on_cmd(pattern="badd ?(.*)"))
 @friday.on(sudo_cmd(pattern="badd ?(.*)", allow_sudo=True))
 async def _(event):
@@ -260,7 +253,7 @@ async def _(event):
     sed = 0
     oks = 0
     if input_chnnl == "all":
-        poppo = await edit_or_reply(event, "`Adding All Channel TO DB.`")
+        poppo = await friday.edit_or_reply(event, "`Adding All Channel TO DB.`")
         addall = [
             d.entity
             for d in await event.client.get_dialogs()
@@ -283,16 +276,16 @@ async def _(event):
         if event.is_channel and event.is_group:
             input_chnnl = event.chat_id
         else:
-            await edit_or_reply(event, "Please Give Group / Channel ID !")
+            await friday.edit_or_reply(event, "Please Give Group / Channel ID !")
             return
     if already_added(input_chnnl):
-        await edit_or_reply(event, "This Channel Already Found in Database.")
+        await friday.edit_or_reply(event, "This Channel Already Found in Database.")
         return
     if not already_added(input_chnnl):
         add_chnnl_in_db(input_chnnl)
         M = f"Fine. I have Added {input_chnnl} To DataBase."
         Ml = f"Added {input_chnnl} To DB"
-        await edit_or_reply(event, M)
+        await friday.edit_or_reply(event, M)
         await borg.send_message(loggy_grp, Ml)
 
 
@@ -306,20 +299,20 @@ async def _(event):
     if input_chnnl == "all":
         for channelz in all_chnnl:
             rm_channel(channelz.chat_id)
-        await edit_or_reply(event, "Fine. Cleared All Channel Database")
+        await friday.edit_or_reply(event, "Fine. Cleared All Channel Database")
         return
     if input_chnnl == "":
         if event.is_channel and event.is_group:
             input_chnnl = event.chat_id
         else:
-            await edit_or_reply(event, "Please Give Group / Channel ID")
+            await friday.edit_or_reply(event, "Please Give Group / Channel ID")
             return
     if already_added(input_chnnl):
         rm_channel(input_chnnl)
-        await edit_or_reply(event, f"Fine. I have Removed {input_chnnl} From DataBase.")
+        await friday.edit_or_reply(event, f"Fine. I have Removed {input_chnnl} From DataBase.")
         await borg.send_message(loggy_grp, f"Removed {input_chnnl} From DB")
     elif not already_added(input_chnnl):
-        await edit_or_reply(event, 
+        await friday.edit_or_reply(event, 
             "Are You Sure? , You Haven't Added This Group / Channel To Database"
         )
 
@@ -329,7 +322,7 @@ async def _(event):
 async def _(event):
     if event.fwd_from:
         return
-    poppo = await edit_or_reply(event, "**Fine. Broadcasting in Progress. Kindly Wait !**")
+    poppo = await friday.edit_or_reply(event, "**Fine. Broadcasting in Progress. Kindly Wait !**")
     sedpath = Config.TMP_DOWNLOAD_DIRECTORY
     all_chnnl = get_all_chnnl()
     if len(all_chnnl) == 0:
@@ -345,10 +338,9 @@ async def _(event):
         await poppo.edit("Reply To Some Message.")
         return
     if hmm and hmm.media:
-        ok = await borg.download_media(hmm.media, sedpath)
         for channelz in all_chnnl:
             try:
-                await borg.send_file(int(channelz.chat_id), file=ok, caption=hmm.text)
+                await borg.send_file(int(channelz.chat_id), file=hmm.media, caption=hmm.text)
                 total_count += 1
             except Exception as e:
                 total_errors += 1
@@ -362,7 +354,7 @@ async def _(event):
             except Exception as e:
                 total_errors += 1
     elif hmm.message.poll:
-        await poppo.edit("Bruh, This Can't Be Broadcasted.")
+        await poppo.edit("`Bruh, This Can't Be Broadcasted!`")
         return
     await poppo.edit(
         f"BroadCast Success In : {total_count} \nFailed In : {total_errors} \nTotal Channel In DB : {total_chnnl}"
@@ -382,24 +374,24 @@ async def _(event):
         return
     all_chnnl = get_all_chnnl()
     if len(all_chnnl) == 0:
-        await edit_or_reply(event, "No Channel Or Group Found On Database. Please Check Again")
+        await friday.edit_or_reply(event, "No Channel Or Group Found On Database. Please Check Again")
         return
     total_errors = 0
     total_count = 0
     errorno = ""
     total_chnnl = len(all_chnnl)
     if event.reply_to_msg_id:
-        hmm = await event.get_reply_message()
+        hmm_k = await event.get_reply_message()
     else:
-        await edit_or_reply(event, "Reply To Some Message.")
+        await friday.edit_or_reply(event, "Reply To Some Message.")
         return
-    try:
-        for forbard in all_chnnl:
-            await borg.forward_messages(forbard.chat_id, hmm)
+    for forbard in all_chnnl:
+        try:
+            await hmm_k.forward_to(forbard.chat_id)
             total_count += 1
-    except Exception as e:
-        total_errors += 1
-    poppo = await edit_or_reply(event, 
+        except:
+            total_errors += 1
+    poppo = await friday.edit_or_reply(event, 
         f"Forward Success in {total_count} And Failed In {total_errors} And Total Channel In Db is {total_chnnl}"
     )
     try:
@@ -410,8 +402,8 @@ async def _(event):
     except:
         pass
 
-@friday.on(friday_on_cmd(pattern="bstat"))
-@friday.on(sudo_cmd(pattern="bstat", allow_sudo=True))
+@friday.on(friday_on_cmd(pattern="bstat$"))
+@friday.on(sudo_cmd(pattern="bstat$", allow_sudo=True))
 async def _(event):
     if event.fwd_from:
         return
@@ -446,7 +438,7 @@ CMD_HELP.update(
         \n**Usage :** Removes Everything From DataBase.\
         \n\n**Syntax : **`.broadcast <Reply-To-Msg>`\
         \n**Usage :**  Broadcasts To All Channel in DB, Even Supports Media.\
-        \n\n**Syntax : **`.forward <Reply-To-Msg>`\
+        \n\n**Syntax : **`.bforward <Reply-To-Msg>`\
         \n**Usage :** Forwards To All Channel in Database.\
         \n\n**Syntax : **`.bstat`\
         \n**Usage :** Shows list of channels/groups in database."
@@ -535,7 +527,7 @@ async def _(event):
     await borg(functions.account.UpdateProfileRequest(about=user_bio))
     pfile = await borg.upload_file(profile_pic)  # pylint:disable=E060
     await borg(
-        functions.photos.UploadProfilePhotoRequest(pfile)  # pylint:disable=E0602
+        functions.photos.UploadProfilePhotoRequest(pfile)  
     )
     # message_id_to_reply = event.message.reply_to_msg_id
     # if not message_id_to_reply:

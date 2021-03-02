@@ -4,6 +4,7 @@ nospamplus
 img2pdf
 pymediainfo
 tinydb
+spotdl
 apscheduler
 youtube_dl
 git+https://github.com/chsaiujwal/maigret
@@ -74,7 +75,7 @@ pytz
 qrcode
 regex
 requests
-search-engine-parser>=0.4.2
+search-engine-parser
 selenium
 speedtest-cli>=2.0.2
 sqlalchemy>=1.2

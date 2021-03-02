@@ -15,6 +15,9 @@ import os
 import re
 import urllib
 import json
+from tinydb import TinyDB, Query
+import string
+from random import choice
 from math import ceil
 from re import findall
 import requests
@@ -22,11 +25,13 @@ from fridaybot.Configs import Config
 from youtube_search import YoutubeSearch
 from search_engine_parser import GoogleSearch
 from fridaybot.function import _ytdl, fetch_json, _deezer_dl, all_pro_s
+from fridaybot.function.nana_remix_sauce import anime_sauce, shorten
 from urllib.parse import quote
 import requests
 from telethon import Button, custom, events, functions
 from fridaybot import ALIVE_NAME, CMD_HELP, CMD_LIST, client2 as client1, client3 as client2, bot as client3
 from fridaybot.modules import inlinestats
+from telethon.utils import get_display_name
 #from pornhub_api import PornhubApi
 from telethon.tl.types import BotInlineResult, InputBotInlineMessageMediaAuto, DocumentAttributeImageSize, InputWebDocument, InputBotInlineResult
 from telethon.tl.functions.messages import SetInlineBotResultsRequest
@@ -43,6 +48,9 @@ if not HELP_EMOJI:
     emji = "✘"
 else:
     emji = HELP_EMOJI
+    
+db_m = TinyDB('secret.json')
+db_s = TinyDB('not4u.json')
 
 
 @tgbot.on(events.InlineQuery)
@@ -51,6 +59,21 @@ async def inline_handler(event):
     builder = event.builder
     result = None
     query = event.text
+    if not query:
+        if event.query.user_id not in o:
+            resultm = builder.article(
+                title="403: Forbidden",
+                text=f"You Are Forbidden To Use This Bot, You Can Deploy You Own From [Here](https://github.com/DevsExpo/FridayUserbot)",
+            )
+            await event.answer([resultm])
+            return
+        results = builder.article(
+                title="Hello Boss, This is Your Assistant!",
+                text=f"Wonder What All You Can Do With Me? Click Below To Know More.",
+                buttons=custom.Button.inline("Explore!", data="explore")
+            )
+        await event.answer([results])
+        return
     if event.query.user_id in o and query.startswith("Friday"):
         rev_text = query[::-1]
         buttons = paginate_help(0, CMD_HELP, "helpme")
@@ -88,8 +111,119 @@ async def inline_handler(event):
             ],
         )
         await event.answer([result])
+    elif event.query.user_id in o and query.startswith("Secret"):
+        full_query = query.split(" ", maxsplit=1)[1]
+        user, msg = full_query.split(";")
+        final_user = int(user) if user.isdigit() else user
+        try:
+            ff = await event.client.get_entity(final_user)
+            owo = f"@{ff.username}" if ff.username else f"[{get_display_name(ff)}](tg://user?id={ff.id})"
+            id_main = ff.id
+        except:
+            return
+        starkz = owo
+        chars = string.hexdigits
+        randomc =  ''.join(choice(chars) for _ in range(4))
+        stark_data = {'secret_code': randomc, 'id': id_main, 'msg': msg}
+        db_m.insert(stark_data)
+        result = builder.article(
+            title="This is A Secret MSG!",
+            text=f"A Whisper Has Been Sent For {starkz} . \nClick Below To Check Message! \n**Note :** `Only He/She Can Open It!`",
+            buttons=custom.Button.inline("Show Secret Message !", data=f"sc_{randomc}")
+        )
+        await event.answer([result])
+    elif event.query.user_id in o and query.startswith("Not4u"):
+        full_query = query.split(" ", maxsplit=1)[1]
+        user, msg = full_query.split(";")
+        final_user = int(user) if user.isdigit() else user
+        try:
+            ff = await event.client.get_entity(final_user)
+            owo = f"@{ff.username}" if ff.username else f"[{get_display_name(ff)}](tg://user?id={ff.id})"
+            id_main = ff.id
+        except:
+            return
+        starkz = owo
+        chars = string.hexdigits
+        randomc =  ''.join(choice(chars) for _ in range(5))
+        stark_data = {'secret_code': randomc, 'id': id_main, 'msg': msg}
+        db_s.insert(stark_data)
+        result = builder.article(
+            title="This is A Not4U MSG!",
+            text=f"Everyone Except {starkz} Can See This Message! \nClick Below To Check Message! \n**Note :** `Only He/She Can't Open It!`",
+            buttons=custom.Button.inline("Show Message !", data=f"n4u_{randomc}")
+        )
+        await event.answer([result])    
+        
+@tgbot.on(events.callbackquery.CallbackQuery(data=re.compile(b"explore")))
+async def explore(event):     
+    tbot = await tgbot.get_me()
+    tbot_username = tbot.username
+    oof_stark = f"""**Assistant-Bot Powered By @FridayOT**
+**Ever Wondered What All Can I Do?**
 
+**- Search Youtube Video's / Download In Any Chat Itself!**
+**How? :** `@{tbot_username} yt <query>`
+**Example :** `@{tbot_username} yt fridayuserbot`
 
+**- Google Search!**
+**How? :** `@{tbot_username} google <query>`
+**Example :** `@{tbot_username} google fridayUserbot github`
+
+**- Deezer Search!**
+**How? :** `@{tbot_username} deezer <query>`
+**Example :** `@{tbot_username} deezer why we lose`
+
+**- Whisper Secret Messages!**
+**How? :** `@{tbot_username} Secret <user>;<message>`
+**Example :** `@{tbot_username} Secret @Midhun_xD;Hello, How are you?`
+
+**- Not For You Message**
+**How? :** `@{tbot_username} Not4u <user>;<message>`
+**Example :** `@{tbot_username} Not4u  @Midhun_xD;You Can't Read It.`
+
+**- Xkcd - Meme Like Comics**
+**How? :** `@{tbot_username} xkcd <query>`
+**Example :** `@{tbot_username} xkcd python`
+
+**- Porn-Hub Search**
+**How? :** `@{tbot_username} ph <query>`
+**Example :** `@{tbot_username} ph nohorny`
+
+**Note :** `Many More Coming! SoonTM`
+    	"""
+    await event.edit(oof_stark)
+    
+@tgbot.on(events.callbackquery.CallbackQuery(data=re.compile(b"n4u_(.*)")))
+async def wew_reverse(event):
+    sshh = event.data_match.group(1).decode("UTF-8")
+    stark_moment = Query()
+    sstark = db_s.search(stark_moment.secret_code == sshh)
+    if sstark == []:
+        await event.answer("OwO, It Seems Message Has Been Deleted From Server :(", cache_time=0, alert=True)
+        return
+    id_s = sstark[0]['id']
+    if int(event.query.user_id) == id_s:
+        await event.answer("Everyone Except You Can See This Message, OwO!", cache_time=0, alert=True)
+        return
+    await event.answer(sstark[0]['msg'], cache_time=0, alert=True)
+    
+@tgbot.on(events.callbackquery.CallbackQuery(data=re.compile(b"sc_(.*)")))
+async def wew(event):
+    o = await all_pro_s(Config, client1, client2, client3)
+    sshh = event.data_match.group(1).decode("UTF-8")
+    stark_moment = Query()
+    sstark = db_m.search(stark_moment.secret_code == sshh)
+    if sstark == []:
+        await event.answer("OwO, It Seems Message Has Been Deleted From Server :(", cache_time=0, alert=True)
+        return
+    id_s = sstark[0]['id']
+    o.append(int(id_s))
+    if int(event.query.user_id) not in o:
+        await event.answer("This Message Is Not For You, OwO ! Btw, This is A Bomb Making Secret.!", cache_time=0, alert=True)
+        return
+    await event.answer(sstark[0]['msg'], cache_time=0, alert=True)
+                                                
+    
 @tgbot.on(
     events.callbackquery.CallbackQuery(  # pylint:disable=E0602
         data=re.compile(b"helpme_next\((.+?)\)")
@@ -170,6 +304,7 @@ async def rip(event):
     else:
         txt = "You Can't View My Masters Stats"
         await event.answer(txt, alert=True)
+                
         
 @tgbot.on(events.callbackquery.CallbackQuery(data=re.compile(b"yt_dla_(.*)")))
 async def rip(event):
@@ -577,7 +712,7 @@ async def inline_id_handler(event):
         return
     results = []
     input_str = event.pattern_match.group(1)
-    link = f"https://api.deezer.com/search?q={input_str}&limit=7"
+    link = f"https://api.deezer.com/search?q={input_str}&limit=10"
     dato = requests.get(url=link).json()
     #data_s = json.loads(data_s)
     for match in dato.get("data"):
@@ -599,3 +734,81 @@ async def inline_id_handler(event):
             await event.answer(results)
         except TypeError:
             pass
+                     
+@tgbot.on(events.InlineQuery(pattern=r"anime ?(.*)"))
+async def anime(event):
+    builder = event.builder
+    o = await all_pro_s(Config, client1, client2, client3)
+    if event.query.user_id not in o:
+        resultm = builder.article(
+            title="- Not Allowded -",
+            text=f"You Can't Use This Bot. \nDeploy Friday To Get Your Own Assistant, Repo Link [Here](https://github.com/StarkGang/FridayUserbot)",
+        )
+        await event.answer([resultm])
+        return
+    results = []
+    string = event.pattern_match.group(1)
+    json = anime_sauce(string.lower())['data'].get('Media', None)
+    if json:
+        msg = (
+            '**{}** (`{}`)\n'
+            '**Type**: {}\n'
+            '**Status**: {}\n'
+            '**Episodes**: {}\n'
+            '**Duration**: {}'
+            'Per Ep.\n**Score**: {}\n**Genres**: `'
+        ).format(
+            json['title']['romaji'],
+            json['title']['native'],
+            json['format'],
+            json['status'],
+            json.get('episodes', 'N/A'),
+            json.get('duration', 'N/A'),
+            json['averageScore'],
+        )
+        for x in json['genres']:
+            msg += f'{x}, '
+        msg = msg[:-2] + '`\n'
+        msg += '**Studios**: `'
+        for x in json['studios']['nodes']:
+            msg += f"{x['name']}, "
+        msg = msg[:-2] + '`\n'
+        info = json.get('siteUrl')
+        trailer = json.get('trailer', None)
+        if trailer:
+            trailer_id = trailer.get('id', None)
+            site = trailer.get('site', None)
+            if site == 'youtube':
+                trailer = 'https://youtu.be/' + trailer_id
+        description = (
+            json.get('description', 'N/A')
+            .replace('<i>', '')
+            .replace('</i>', '')
+            .replace('<br>', '')
+        )
+        msg += shorten(description, info)
+        image = f'https://img.anili.st/media/{json["id"]}'
+        buttonz = []
+        if trailer:
+            buttonz.append(Button.url("Trailer", trailer))
+        buttonz.append(Button.url('More Info', info))    
+        if image:
+            results.append(
+            await event.builder.document(
+                file=image,
+                title=f"{json['title']['romaji']}",
+                description=f"{json['format']}",
+                text=msg,
+                include_media=True,
+                buttons=buttonz
+              )
+        )
+        else:
+            results.append(
+            await event.builder.article(
+                title=f"{json['title']['romaji']}",
+                text=msg,
+                buttons=buttonz
+            )
+            )
+    await event.answer(results)        
