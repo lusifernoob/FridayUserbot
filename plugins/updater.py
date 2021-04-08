@@ -10,20 +10,17 @@ from main_startup.config_var import Config
 from main_startup.core.decorators import friday_on_cmd, listen
 from main_startup.helper_func.basic_helpers import edit_or_reply, get_text
 from os import environ, execle, path, remove
+import sys
 from git import Repo
 from datetime import datetime
 import heroku3
 from git.exc import GitCommandError, InvalidGitRepositoryError, NoSuchPathError
 from main_startup.helper_func.logger_s import LogIt
+from main_startup.core.startup_helpers import run_cmd
 
 REPO_ = Config.UPSTREAM_REPO
 BRANCH_ = Config.U_BRANCH
 
-def gen_change_Log(repo, diff):
-    ch_log = ""
-    for c in repo.iter_commits(diff):
-        ch_log += f"🔨 **#{c.count()} :** [{c.summary}]({Config.UPSTREAM_REPO}/commit/{c}) 👷 __{c.author}__ \n"
-    return ch_log
 
 @friday_on_cmd(["update"],
   cmd_help={
@@ -34,19 +31,24 @@ async def update_it(client, message):
     msg_ = await edit_or_reply(message, "`Updating Please Wait!`")
     try:
         repo = Repo()
+    except GitCommandError:
+        return await msg_.edit("`Invalid Git Command. Please Report This Bug To @FridayOT`")
     except InvalidGitRepositoryError:
         repo = Repo.init()
-    if "upstream" in repo.remotes:
-        origin = repo.remote("upstream")
-    else:
-        origin = repo.create_remote("upstream", REPO_)
-    origin.fetch()
-    repo.create_head(Config.U_BRANCH, origin.refs.master)
-    repo.heads.master.set_tracking_branch(origin.refs.master)
-    repo.heads.master.checkout(True)
+        if "upstream" in repo.remotes:
+          origin = repo.remote("upstream")
+        else:
+          origin = repo.create_remote("upstream", REPO_)
+        origin.fetch()
+        repo.create_head(Config.U_BRANCH, origin.refs.master)
+        repo.heads.master.set_tracking_branch(origin.refs.master)
+        repo.heads.master.checkout(True)
     if repo.active_branch.name != Config.U_BRANCH:
-        await msg_.edit(f"`Seems Like You Are Using Custom Branch - {repo.active_branch.name}! Please Switch To {Config.U_BRANCH} To Make This Updater Function!`")
-        return
+        return await msg_.edit(f"`Seems Like You Are Using Custom Branch - {repo.active_branch.name}! Please Switch To {Config.U_BRANCH} To Make This Updater Function!`")
+    try:
+        repo.create_remote("upstream", REPO_)
+    except BaseException:
+        pass
     ups_rem = repo.remote("upstream")
     ups_rem.fetch(Config.U_BRANCH)
     if not Config.HEROKU_URL:
@@ -58,6 +60,7 @@ async def update_it(client, message):
         await msg_.edit("`Updated Sucessfully! Give Me A min To Restart!`")
         args = [sys.executable, "-m", "main_startup"]
         execle(sys.executable, *args, environ)
+        exit()
         return
     else:
         await msg_.edit("`Heroku Detected! Pushing, Please Halt!`")

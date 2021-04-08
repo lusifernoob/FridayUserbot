@@ -16,10 +16,11 @@ import sys
 import psutil
 from pyrogram import __version__
 from os import environ, execle, path, remove
-from main_startup import friday_version, start_time
+from main_startup import friday_version, start_time, Config
 from main_startup.core.decorators import friday_on_cmd
 from main_startup.helper_func.basic_helpers import (
     edit_or_reply,
+    delete_or_pass,
     get_readable_time,
     humanbytes,
 )
@@ -50,15 +51,26 @@ async def pingy(client, message):
     cmd_help={"help": "Get Alive Message Of Your Bot.!", "example": "{ch}alive"},
 )
 async def amialive(client, message):
+    img_ = Config.ALIVE_IMG
+    me_ = client.me.first_name
+    du = psutil.disk_usage(client.workdir)
+    disk = f"{humanbytes(du.used)} / {humanbytes(du.total)} " f"({du.percent}%)"
     alive = f"""
-**Friday-UserBot is Alive!**
+**{me_}'s Friday-UserBot is Alive!**
 
-♦ **Version :** __{friday_version}__
-♦ **Uptime :** __{get_readable_time((time.time() - start_time))}__
-♦ **PyroGram Version :** __{__version__}__
-♦ **Python Version :** __{platform.python_version()}__
+➔ **Version :** __{friday_version}__
+➔ **Uptime :** __{get_readable_time((time.time() - start_time))}__
+➔ **PyroGram Version :** __{__version__}__
+➔ **Python Version :** __{platform.python_version()}__
+➔ **OS :** __{platform.system()}__
+➔ **CPU :** __{len(psutil.Process().cpu_affinity())}__
+➔ **DISK USAGE :** __{disk}__
 """
-    await edit_or_reply(message, alive)
+    if message.reply_to_message:
+        await client.send_photo(message.chat.id, img_, caption=alive, reply_to_message_id=message.reply_to_message.message_id)
+    else:
+        await client.send_photo(message.chat.id, img_, caption=alive)
+    await delete_or_pass(message)
 
 
 @friday_on_cmd(

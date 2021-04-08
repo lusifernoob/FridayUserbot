@@ -79,7 +79,7 @@ async def eval(client, message):
     stark = await edit_or_reply(message, "`Running Code... Please Wait!`")
     cmd = get_text(message)
     if not cmd:
-        await stark.edit("Invalid Command Syntax, Please Check Help Menu To Know More!")
+        await stark.edit("`Please Give Me A Valid Input. You Can Check Help Menu To Know More!`")
         return
     if message.reply_to_message:
         message.reply_to_message.message_id
@@ -131,7 +131,7 @@ async def aexec(code, client, message):
 async def any_lang_cmd_runner(client, message):
     stark = await edit_or_reply(message, "`Running Code... Please Wait!`")
     if len(message.text.split()) == 1:
-        await stark.edit("Invalid Command Syntax, Please Check Help Menu To Know More!")
+        await stark.edit("`Please Give Me A Valid Input. You Can Check Help Menu To Know More!`")
         return
     if not message.reply_to_message:
         await stark.edit("`Reply To A Code, My Master!`")
@@ -149,7 +149,7 @@ async def any_lang_cmd_runner(client, message):
         "lang": lang,
         "token": "5b5f0ad8-705a-4118-87d4-c0ca29939aed",
     }
-    r = requests.post("https://starkapi.herokuapp.com/compiler", data=data).json()
+    r = requests.post("https://starkapis.herokuapp.com/compiler", data=data).json()
     if r.get("reason") != None:
         iujwal = f"""**▶ Code :** \n`{reply_code}` 
 **▶ Result :** 
@@ -192,7 +192,7 @@ async def sed_terminal(client, message):
     stark = await edit_or_reply(message, "`Please Wait!`")
     cmd = get_text(message)
     if not cmd:
-        await stark.edit("Invalid Command Syntax, Please Check Help Menu To Know More!")
+        await stark.edit("`Please Give Me A Valid Input. You Can Check Help Menu To Know More!`")
         return
     cmd = message.text.split(None, 1)[1]
     if message.reply_to_message:

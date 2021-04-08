@@ -71,21 +71,21 @@ async def gib_logs(client, message, happ):
     ['setvar'],
     cmd_help={
         "help": "Set Var From telegram Itself, Please Seperate Var And Value With '|'",
-        "example": "{ch}setvar LOAD_UNOFFICIAL_PLUGINS|False"})
+        "example": "{ch}setvar LOAD_UNOFFICIAL_PLUGINS False"})
 @_check_heroku
 async def set_varr(client, message, app_):
   msg_ = await edit_or_reply(message, "`Please Wait!`")
   heroku_var = app_.config()
   _var = get_text(message)
   if not _var:
-        await msg_.edit("`Here is Usage Syntax : .setvar KEY|VALUE`")
+        await msg_.edit("`Here is Usage Syntax : .setvar KEY VALUE`")
         return
-  if not '|' in _var:
-        await msg_.edit("`Here is Usage Syntax : .setvar KEY|VALUE`")
+  if not ' ' in _var:
+        await msg_.edit("`Here is Usage Syntax : .setvar KEY VALUE`")
         return
-  var_ = _var.split('|')
+  var_ = _var.split(' ', 1)
   if len(var_) > 2:
-        await msg_.edit("`Here is Usage Syntax : .setvar KEY|VALUE`")
+        await msg_.edit("`Here is Usage Syntax : .setvar KEY VALUE`")
         return
   _varname, _varvalue = var_
   await msg_.edit(f"`Variable {_varname} Added With Value {_varvalue}!`")

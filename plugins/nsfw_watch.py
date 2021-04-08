@@ -23,7 +23,7 @@ from main_startup.helper_func.plugin_helpers import is_nsfw
 )
 async def add_nsfw(client, message):
     pablo = await edit_or_reply(message, "`Processing..`")
-    if is_chat_in_db(message.chat.id):
+    if await is_chat_in_db(int(message.chat.id)):
         await pablo.edit("`This Chat is Already In My DB`")
         return
     me = await client.get_me()
@@ -31,7 +31,7 @@ async def add_nsfw(client, message):
     if not lol:
         await pablo.edit("`I Am Not An Admin!`")
         return
-    add_chat(message.chat.id)
+    await add_chat(int(message.chat.id))
     await pablo.edit("Successfully Added Chat To NSFW Watch.")
 
 
@@ -42,39 +42,42 @@ async def add_nsfw(client, message):
 )
 async def remove_nsfw(client, message):
     pablo = await edit_or_reply(message, "`Processing..`")
-    if not is_chat_in_db(message.chat.id):
+    if not await is_chat_in_db(int(message.chat.id)):
         await pablo.edit("`This Chat is Not in dB.`")
         return
-    rm_chat(message.chat.id)
+    await rm_chat(int(message.chat.id))
     await pablo.edit("`Successfully Removed Chat From NSFW Watch.`")
 
 
 @listen(filters.incoming & filters.media & ~filters.private & ~filters.channel)
 async def nsfw_watch(client, message):
-    lol = get_all_nsfw_chats()
+    lol = await get_all_nsfw_chats()
     if len(lol) == 0:
         message.continue_propagation()
-    if not is_chat_in_db(message.chat.id):
+        return
+    if not await is_chat_in_db(int(message.chat.id)):
         message.continue_propagation()
+        return
     hot = await is_nsfw(client, message, False)
     if not hot:
         message.continue_propagation()
+        return
     else:
         try:
             await message.delete()
             await client.restrict_chat_member(
-                message.chat.id,
+                int(message.chat.id),
                 message.from_user.id,
                 ChatPermissions(can_send_messages=False),
             )
         except:
             pass
-        lolchat = await client.get_chat(message.chat.id)
+        lolchat = await client.get_chat(int(message.chat.id))
         ctitle = lolchat.title
         if lolchat.username:
             hehe = lolchat.username
         else:
-            hehe = message.chat.id
+            hehe = int(message.chat.id)
         midhun = await client.get_users(message.from_user.id)
         await message.delete()
         if midhun.username:

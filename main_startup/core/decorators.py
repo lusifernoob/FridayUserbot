@@ -14,7 +14,7 @@ import logging
 import pytz
 from pyrogram import StopPropagation, filters, ContinuePropagation
 from pyrogram.handlers import MessageHandler
-
+from pyrogram.errors.exceptions.bad_request_400 import MessageNotModified, MessageIdInvalid, UserNotParticipant
 from main_startup import (
     CMD_LIST,
     XTRA_CMD_LIST,
@@ -73,6 +73,12 @@ def friday_on_cmd(
                     raise StopPropagation
                 except KeyboardInterrupt:
                     pass
+                except MessageNotModified:
+                    pass
+                except MessageIdInvalid:
+                    logging.warning("Please Don't Delete Commands While it's Processing..")
+                except UserNotParticipant:
+                    pass
                 except ContinuePropagation:
                     raise ContinuePropagation
                 except BaseException as e:
@@ -129,6 +135,8 @@ def listen(filter_s):
                     await client.send_message(Config.LOG_GRP, text)
                 except Exception:
                     pass
+                message.continue_propagation()
+                return
         Friday.add_handler(MessageHandler(wrapper, filters=filter_s), group=0)
         if Friday2:
             Friday2.add_handler(MessageHandler(wrapper, filters=filter_s), group=0)

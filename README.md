@@ -2,6 +2,7 @@
 <h1 align="center"><b>FRIDAY-USERBOT 🇮🇳 </b></h1>
 <h4 align="center">A Powerful, Smart And Simple Userbot In Pyrogram.</h4>
 
+
 ## Support 🚑
 <a href="https://t.me/FridaySupportOfficial"><img src="https://img.shields.io/badge/Join-Telegram%20Channel-red.svg?logo=Telegram"></a>
 <a href="https://t.me/fridayOT"><img src="https://img.shields.io/badge/Join-Telegram%20Group-blue.svg?logo=telegram"></a>
@@ -36,6 +37,7 @@ $ pip(3) install -r requirements.txt
 $ python(3) -m main_startup
 ```
 
+
 ### Mandatory Configs 📒
 ```
 [+] Make Sure You Add All These Mandatory Vars. 
@@ -58,7 +60,7 @@ from main_startup.helper_func.basic_helpers import edit_or_reply
 @friday_on_cmd(['helloworld'],
     cmd_help={
     "help": "This is A TEST",
-    "example": ".helloworld"
+    "example": "{ch}helloworld"
     })
 async def hello_world(client, message):
     mg = await edit_or_reply(message, "`Hello World! This Works!`")
@@ -68,9 +70,9 @@ async def hello_world(client, message):
 ```python3
 from main_startup.core.decorators import listen
 
-@listen(filters.mentioned & ~filters.me)
+@listen(filters.mentioned)
 async def mentioned_(client, message):
-    await message.reply_text("`Hello World! Btw Why Did You Mention Me?`")
+    await message.reply_text("`Hello World! By The Way Why Did You Mention Me?`")
 ```
 
 # X-Tra Plugins 🎸
