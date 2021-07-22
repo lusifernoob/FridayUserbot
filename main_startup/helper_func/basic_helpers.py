@@ -7,13 +7,14 @@
 # All rights reserved.
 
 import asyncio
+import logging
 import math
 import os
 import shlex
 import time
 from math import ceil
-from typing import Tuple
 from traceback import format_exc
+from typing import Tuple
 from pyrogram import Client
 from pyrogram.errors import FloodWait, MessageNotModified
 from pyrogram.types import (
@@ -22,10 +23,27 @@ from pyrogram.types import (
     InputTextMessageContent,
     Message,
 )
-
 from main_startup import Friday, Friday2, Friday3, Friday4
+from database.sudodb import sudo_list
 from main_startup.config_var import Config
-import logging
+import multiprocessing
+import mimetypes
+import functools
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
+max_workers = multiprocessing.cpu_count() * 5
+exc_ = ThreadPoolExecutor(max_workers=max_workers)
+
+
+def guess_mime_type(file_):
+    """Get Mime Type Of A File From Url / Path"""
+    s = mimetypes.guess_type(file_)
+    if not s[0]:
+        return None
+    else:
+        return s[0]
+
 
 def get_user(message: Message, text: str) -> [int, str, None]:
     """Get User From Message"""
@@ -56,17 +74,15 @@ def get_user(message: Message, text: str) -> [int, str, None]:
 
 
 async def edit_or_reply(message, text, parse_mode="md"):
+    sudo_lis_t = await sudo_list()
     """Edit Message If Its From Self, Else Reply To Message, (Only Works For Sudo's)"""
     if not message:
         return await message.edit(text, parse_mode=parse_mode)
     if not message.from_user:
         return await message.edit(text, parse_mode=parse_mode)
-    if message.from_user.id in Config.AFS:
+    if message.from_user.id in sudo_lis_t:
         if message.reply_to_message:
-            kk = message.reply_to_message.message_id
-            return await message.reply_text(
-                text, reply_to_message_id=kk, parse_mode=parse_mode
-            )
+            return await message.reply_to_message.reply_text(text, parse_mode=parse_mode)
         return await message.reply_text(text, parse_mode=parse_mode)
     return await message.edit(text, parse_mode=parse_mode)
 
@@ -114,16 +130,16 @@ def get_readable_time(seconds: int) -> int:
 async def get_all_pros() -> list:
     """Get All Users , Sudo + Owners + Other Clients"""
     users = list(Config.SUDO_USERS)
-    ujwal = await Friday.get_me()
+    ujwal = Friday.me
     users.append(ujwal.id)
     if Friday2:
-        ujwal2 = await Friday2.get_me()
+        ujwal2 = Friday2.me
         users.append(ujwal2.id)
     if Friday3:
-        ujwal3 = await Friday3.get_me()
+        ujwal3 = Friday3.me
         users.append(ujwal3.id)
     if Friday4:
-        ujwal4 = await Friday4.get_me()
+        ujwal4 = Friday4.me
         users.append(ujwal4.id)
     return users
 
@@ -140,7 +156,9 @@ def paginate_help(page_number, loaded_modules, prefix, is_official=True):
     modules = [
         InlineKeyboardButton(
             text="{} {} {}".format(
-                Config.CUSTOM_HELP_EMOJI, x, Config.CUSTOM_HELP_EMOJI
+                Config.CUSTOM_HELP_EMOJI,
+                x.replace("_", " ").title(),
+                Config.CUSTOM_HELP_EMOJI,
             ),
             callback_data="us_plugin_{}|{}_{}".format(x, page_number, is_official),
         )
@@ -158,12 +176,16 @@ def paginate_help(page_number, loaded_modules, prefix, is_official=True):
             (
                 InlineKeyboardButton(
                     text="⏪ Previous",
-                    callback_data="{}_prev({})_{}".format(prefix, modulo_page, is_official),
+                    callback_data="{}_prev({})_{}".format(
+                        prefix, modulo_page, is_official
+                    ),
                 ),
-                InlineKeyboardButton(text="Close", callback_data="cleuse"),
+                InlineKeyboardButton(text="Back 🔙", callback_data=f"backO_to_help_menu"),
                 InlineKeyboardButton(
                     text="Next ⏩",
-                    callback_data="{}_next({})_{}".format(prefix, modulo_page, is_official),
+                    callback_data="{}_next({})_{}".format(
+                        prefix, modulo_page, is_official
+                    ),
                 ),
             )
         ]
@@ -215,6 +237,7 @@ def inline_wrapper(func):
             )
         else:
             await func(client, inline_query)
+
     return wrapper
 
 
@@ -236,6 +259,13 @@ def humanbytes(size):
         size /= power
         raised_to_pow += 1
     return str(round(size, 2)) + " " + dict_power_n[raised_to_pow] + "B"
+
+def run_in_exc(f):
+    @functools.wraps(f)
+    async def wrapper(*args, **kwargs):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(exc_, lambda: f(*args, **kwargs))
+    return wrapper
 
 
 def time_formatter(milliseconds: int) -> str:
@@ -276,7 +306,9 @@ async def progress(current, total, message, start, type_of_ps, file_name=None):
         )
         if file_name:
             try:
-                await message.edit("{}\n**File Name:** `{}`\n{}".format(type_of_ps, file_name, tmp))
+                await message.edit(
+                    "{}\n**File Name:** `{}`\n{}".format(type_of_ps, file_name, tmp)
+                )
             except FloodWait as e:
                 await asyncio.sleep(e.x)
             except MessageNotModified:
@@ -288,6 +320,7 @@ async def progress(current, total, message, start, type_of_ps, file_name=None):
                 await asyncio.sleep(e.x)
             except MessageNotModified:
                 pass
+
 
 async def cb_progress(current, total, cb, start, type_of_ps, file_name=None):
     """Progress Bar For Showing Progress While Uploading / Downloading File - Inline"""
@@ -311,7 +344,9 @@ async def cb_progress(current, total, cb, start, type_of_ps, file_name=None):
         )
         if file_name:
             try:
-                await cb.edit_message_text("{}\n**File Name:** `{}`\n{}".format(type_of_ps, file_name, tmp))
+                await cb.edit_message_text(
+                    "{}\n**File Name:** `{}`\n{}".format(type_of_ps, file_name, tmp)
+                )
             except FloodWait as e:
                 await asyncio.sleep(e.x)
             except MessageNotModified:

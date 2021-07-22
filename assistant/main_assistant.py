@@ -6,41 +6,35 @@
 #
 # All rights reserved.
 
-from main_startup import bot, Friday
-from pyrogram import Client, filters
-from main_startup.helper_func.assistant_helpers import _check_admin, _check_owner_or_sudos
-from main_startup.config_var import Config
-from database.bot_users import get_all_users, check_user, add_user
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-import asyncio
-from datetime import datetime
-from langdetect import detect
-import io
-from pyrogram.types import InputMediaDocument
 import os
-import re
-from main_startup import friday_version, start_time
 import time
-from main_startup.helper_func.basic_helpers import (
-    edit_or_reply,
-    get_readable_time,
-    humanbytes,
-)
-from google_trans_new import google_translator
-from googletrans import LANGUAGES
-import wget
+from datetime import datetime
+
 import gtts
 import requests
+from google_trans_new import google_translator
+from googletrans import LANGUAGES
 from gtts import gTTS
 from hachoir.metadata import extractMetadata
 from hachoir.parser import createParser
-from main_startup.helper_func.basic_helpers import is_admin_or_owner, get_all_pros
+from langdetect import detect
+from pyrogram import filters
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+from database.bot_users import add_user, check_user, get_all_users
+from main_startup import bot, start_time
+from main_startup.config_var import Config
+from main_startup.helper_func.assistant_helpers import (
+    _check_admin,
+    _check_owner_or_sudos,
+)
+from main_startup.helper_func.basic_helpers import get_all_pros, get_readable_time
 
 
 @bot.on_message(filters.command(["start"]) & filters.incoming)
 async def start(client, message):
     all_user_s = await get_all_pros()
-    starkbot = await client.get_me()
+    starkbot = client.me
     bot_name = starkbot.first_name
     bot_username = starkbot.username
     firstname = message.from_user.first_name
@@ -48,25 +42,55 @@ async def start(client, message):
     starttext = f"`Hello, {firstname} ! Nice To Meet You, Well I Am {bot_name}, An Powerfull Assistant Bot To Talk And Do Many Things For My Master!`. \n\nPowered By [Friday Userbot](t.me/FridayOT)"
     mypic = Config.ASSISTANT_START_PIC
     if user_id not in all_user_s:
-        kok = check_user(user_id)
+        await client.send_photo(
+            message.chat.id,
+            mypic,
+            starttext,
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("Help Me ❓", url="t.me/Fridayot")]]
+            ),
+        )
+        kok = await check_user(user_id)
         if not kok:
-            add_user(user_id)
-        await client.send_photo(message.chat.id, mypic, starttext, reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Help Me ❓", url = "t.me/Fridayot")]]))
+            await add_user(user_id)
     else:
         message87 = f"Hi Master, It's Me {bot_name}, Your Assistant ! \nWhat You Wanna Do today ?"
-        await client.send_photo(message.chat.id, mypic, message87, reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Add Me to Group 👥", url = f"t.me/{bot_username}?startgroup=true")], [InlineKeyboardButton("Commands For Assistant", callback_data = "cmdgiv")]]))
-        
+        await client.send_photo(
+            message.chat.id,
+            mypic,
+            message87,
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "Add Me to Group 👥",
+                            url=f"t.me/{bot_username}?startgroup=true",
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "Commands For Assistant", callback_data="cmdgiv"
+                        )
+                    ],
+                ]
+            ),
+        )
+
 
 @bot.on_callback_query(filters.regex("cmdgiv"))
 async def cmdgiv(client, cb):
     grabon = "Hello Here Are Some Commands \n➤ /start - Check if I am Alive \n➤ /ping - Pong! \n➤ /tr (lang-code) \n➤ /tts (lang-code) \n➤ /promote - Promote a user \n➤ /broadcast - Sends Message To all Users In Bot \n➤ /id - Shows ID of User And Chat \n➤ /info - Shows INFO of User \n➤ /users - Get List Of Users In dB. "
     await cb.edit_message_text(grabon)
 
+
 @bot.on_message(filters.command(["alive"]) & filters.incoming)
 @_check_owner_or_sudos
 async def alive(client, message):
-    lol = await bot.get_me()
-    await message.reply(f"`Yo ! {message.from_user.first_name} , I am Alive. Need Help ? How Are You? 🤟`")
+    lol = client.me
+    await message.reply(
+        f"`Yo ! {message.from_user.first_name} , I am Alive. Need Help ? How Are You? 🤟`"
+    )
+
 
 @bot.on_message(filters.command(["help"]) & filters.incoming)
 @_check_owner_or_sudos
@@ -75,16 +99,16 @@ async def fuckinhelp(client, message):
     await message.reply(grabon)
 
 
-@bot.on_message(filters.regex("users") & filters.incoming)
+@bot.on_message(filters.regex("users") & filters.incoming & filters.private)
 @_check_owner_or_sudos
 async def user_s(client, message):
     users_list = "List Of Total Users In Bot. \n\n"
-    total_users = get_all_users()
+    total_users = await get_all_users()
     for starked in total_users:
-            users_list += ("==> {} \n").format(int(starked.get("user_id")))
-    with open('users.txt', 'w') as f:
-         f.write(users_list)
-    await message.reply_document('users.txt', caption = "Users In Your dB")
+        users_list += ("==> {} \n").format(int(starked.get("user_id")))
+    with open("users.txt", "w") as f:
+        f.write(users_list)
+    await message.reply_document("users.txt", caption="Users In Your dB")
 
 
 @bot.on_message(filters.command(["promote"]) & filters.group)
@@ -94,7 +118,7 @@ async def promote_me(client, message):
     if not message.reply_to_message:
         await pablo.edit("Please Reply To A User")
         return
-    lol = await bot.get_me()
+    lol = client.me
     user_s = await message.chat.get_member(lol.id)
     if user_s.status in ("creator", "administrator"):
         pass
@@ -108,14 +132,18 @@ async def promote_me(client, message):
         title = None
     await pablo.edit("`Promoting This User!`")
     try:
-        await client.promote_chat_member(message.chat.id, message.reply_to_message.from_user.id)
+        await client.promote_chat_member(
+            message.chat.id, message.reply_to_message.from_user.id
+        )
     except:
         await pablo.edit("`I Don't Have Enough Permissions To Promote!`")
         return
     await pablo.edit("`Promoted The User Successfully!`")
     if title:
-        await client.set_administrator_title(message.chat.id, message.reply_to_message.from_user.id, title)
-    
+        await client.set_administrator_title(
+            message.chat.id, message.reply_to_message.from_user.id, title
+        )
+
 
 @bot.on_message(filters.command(["demote"]) & filters.group)
 @_check_admin
@@ -124,7 +152,7 @@ async def demote_you(client, message):
     if not message.reply_to_message:
         await pablo.edit("Please Reply To A User")
         return
-    lol = await bot.get_me()
+    lol = client.me
     user_s = await message.chat.get_member(lol.id)
     if user_s.status in ("creator", "administrator"):
         pass
@@ -160,6 +188,7 @@ async def id(client, message):
         test = f"Replied User's ID is: {message.reply_to_message.from_user.id}\n\nThis chat's ID is: {message.chat.id}"
         await message.reply(test)
 
+
 @bot.on_message(filters.command(["info"]) & filters.incoming)
 async def info(client, message):
     if message.reply_to_message:
@@ -187,7 +216,7 @@ ID: <code>{id}</code>
 First Name: {first_name}
 User link: {user_link}"""
     await message.reply(text, parse_mode="HTML")
-    
+
 
 @bot.on_message(filters.command(["ping"]) & filters.incoming)
 @_check_owner_or_sudos
@@ -209,9 +238,9 @@ async def tts_(client, message):
     text_to_return = message.text
     lol = await message.reply("Processing....")
     try:
-            lang= message.text.split(None, 1)[1]
+        lang = message.text.split(None, 1)[1]
     except IndexError:
-            lang = "en"
+        lang = "en"
     if not message.reply_to_message:
         await lol.edit("`Reply To Text To Convert To Text!`")
         return
@@ -246,9 +275,9 @@ async def tts_(client, message):
 async def tr(client, message):
     text_to_return = message.text
     try:
-            lang= message.text.split(None, 1)[1]
+        lang = message.text.split(None, 1)[1]
     except IndexError:
-            lang = "en"
+        lang = "en"
     if not message.reply_to_message:
         await message.reply("Reply To Text To Translate")
         return
@@ -269,8 +298,7 @@ async def tr(client, message):
             f"Translated Text Was Too Big, Never Mind I Have Pasted It [Here]({url2})"
         )
     await message.reply(tr_text)
-    
-    
+
 
 @bot.on_message(filters.command(["broadcast"]) & filters.incoming)
 @_check_owner_or_sudos
@@ -281,13 +309,13 @@ async def broadcast(client, message):
         msg = True
     else:
         await lol.edit("`Please Reply Message To Broadcast!`")
-        return 
+        return
     if msg == None:
         await lol.edit("`Please Reply Message To Broadcast!`")
         return
     s = 0
     f = 0
-    total_users = get_all_users()
+    total_users = await get_all_users()
     tett = "**▶ You Received A BroadCast Message :**"
     for user in total_users:
         user_id = user.get("user_id")
@@ -298,6 +326,8 @@ async def broadcast(client, message):
         except:
             f += 1
     if f > 0:
-       await lol.edit(f"Successfully Broadcasted to {s} users. Failed To Broadcast To {f} users.  Maybe They Blocked The Bot")
+        await lol.edit(
+            f"Successfully Broadcasted to {s} users. Failed To Broadcast To {f} users.  Maybe They Blocked The Bot"
+        )
     else:
-       await lol.edit(f"Successfully Broadcasted to {s} users.")
+        await lol.edit(f"Successfully Broadcasted to {s} users.")

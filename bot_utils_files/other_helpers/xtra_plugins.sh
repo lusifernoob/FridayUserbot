@@ -6,12 +6,12 @@
 #
 # All rights reserved.
 
-PLUGIN_REPO="https://github.com/DevsExpo/Xtra-Plugins.git"
+PLUGIN_REPO="$1"
 xtra_fold="./xtraplugins"
 req_file="./xtraplugins/req.txt"
 
 make_xtra_dir () {
-  if [[ -d "$xtra_fold" ]] 
+  if [ -d "$xtra_fold" ] 
   then
     rm -r "$xtra_fold"
     mkdir "$xtra_fold"
@@ -25,7 +25,7 @@ git_clone_plugin_repo () {
 }
 
 xtra_pip_installer () {
-    pip3 install --no-cache-dir -r "$req_file"
+    pip3 install -r "$req_file"
 }
 
 fetch_xtra_plugins () {

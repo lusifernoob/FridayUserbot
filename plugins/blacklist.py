@@ -6,8 +6,10 @@
 #
 # All rights reserved.
 
-from pyrogram import filters
 import logging
+
+from pyrogram import filters
+
 from database.blacklistdb import (
     add_to_blacklist,
     blacklists_del,
@@ -39,17 +41,18 @@ from main_startup.helper_func.logger_s import LogIt
     },
 )
 async def addblacklist(client, message):
-    pablo = await edit_or_reply(message, "`Processing..`")
+    engine = message.Engine
+    messag_e_ = await edit_or_reply(message, engine.get_string("PROCESSING"))
     blacklist = get_text(message)
     if not blacklist:
-        await pablo.edit("`Give Word To Blacklist!`")
+        await messag_e_.edit(engine.get_string("INPUT_REQ").format("KeyWord"))
         return
     if await is_blacklist_in_db(int(message.chat.id), blacklist):
-        await pablo.edit("`Given Word Already Blacklisted!`")
+        await messag_e_.edit(engine.get_string("BLACKLIST_1"))
         return
     blacklist = blacklist.lower()
     await add_to_blacklist(blacklist, int(message.chat.id))
-    await pablo.edit(f"`{blacklist}` `Successfully Added To Blacklist`")
+    await messag_e_.edit(engine.get_string('BLACKLIST_2').format(blacklist))
 
 
 @friday_on_cmd(
@@ -57,14 +60,15 @@ async def addblacklist(client, message):
     cmd_help={"help": "Check Blacklist List!", "example": "{ch}listblocklist"},
 )
 async def listblacklist(client, message):
-    pablo = await edit_or_reply(message, "`Processing..`")
+    engine = message.Engine
+    messag_e_ = await edit_or_reply(message, engine.get_string("PROCESSING"))
     if not await get_chat_blacklist(int(message.chat.id)):
-        await pablo.edit("This Chat Has No Blacklist")
+        await messag_e_.edit(engine.get_string("BLACKLIST_3"))
         return
-    OUT_STR = "Blacklists in the Current Chat:\n"
-    for midhun in await get_chat_blacklist(int(message.chat.id)):
-        OUT_STR += f"👉 `{midhun['trigger']}` \n"
-    await edit_or_send_as_file(OUT_STR, pablo, client, "Blacklist", "blacklist")
+    OUT_STR = engine.get_string("BLACKLIST_4")
+    for trigger_s_ in await get_chat_blacklist(int(message.chat.id)):
+        OUT_STR += f"👉 `{trigger_s_['trigger']}` \n"
+    await edit_or_send_as_file(OUT_STR, messag_e_, client, "Blacklist", "blacklist")
 
 
 @friday_on_cmd(
@@ -75,27 +79,27 @@ async def listblacklist(client, message):
     },
 )
 async def delblacklist(client, message):
-    pablo = await edit_or_reply(message, "`Processing..`")
+    engine = message.Engine
+    messag_e_ = await edit_or_reply(message, engine.get_string("PROCESSING"))
     blacklist = get_text(message)
     if not blacklist:
-        await pablo.edit("`Give Word To Remove From Blacklist!`")
+        await messag_e_.edit(engine.get_string("INPUT_REQ").format("KeyWord"))
         return
     if not await is_blacklist_in_db(int(message.chat.id), blacklist):
-        await pablo.edit("`Given Word Is Not Blacklisted!`")
+        await messag_e_.edit(engine.get_string("BLACKLIST_5"))
         return
     blacklist = blacklist.lower()
     await del_blacklist(blacklist, int(message.chat.id))
-    await pablo.edit(f"`{blacklist}` `Successfully Removed From Blacklist`")
+    await messag_e_.edit(engine.get_string("BLACKLIST_6").format(blacklist))
 
 
 @listen(filters.incoming & ~filters.edited & filters.group)
 async def activeblack(client, message):
+    engine = message.Engine
     if not await get_chat_blacklist(int(message.chat.id)):
-        message.continue_propagation()
         return
     owo = message.text
-    if owo is None:
-        message.continue_propagation()
+    if owo is message.text:
         return
     owoo = owo.lower()
     tges = owoo.split(" ")
@@ -104,13 +108,13 @@ async def activeblack(client, message):
             try:
                 await message.delete()
             except Exception as e:
-                logging.error(f"[Blacklist] {e}")
+                logging.error(f"[Blacklist] - {e}")
                 log = LogIt(message)
                 await log.log_msg(
                     client,
-                    f"**Blacklist Warning**\n\nI am Not Admin In **{message.chat.title}**, So I cannot Delete That Group's Blacklist messages",
+                    engine.get_strings("BLACKLIST_7").format(message.chat.title, e)
                 )
-    message.continue_propagation()      
+    
 
 
 @friday_on_cmd(
@@ -121,9 +125,10 @@ async def activeblack(client, message):
     },
 )
 async def delblacklists(client, message):
-    pablo = await edit_or_reply(message, "`Processing..`")
+    engine = message.Engine
+    messag_e_ = await edit_or_reply(message, engine.get_string("PROCESSING"))
     if not await get_chat_blacklist(int(message.chat.id)):
-        await pablo.edit("This Chat Has No Blacklist")
+        await messag_e_.edit(engine.get_string("BLACKLIST_3"))
         return
     await blacklists_del(int(message.chat.id))
-    await pablo.edit("`All Chat Blacklists Have Been Removed!`")
+    await messag_e_.edit(engine.get_string("BLACKLIST_8"))
